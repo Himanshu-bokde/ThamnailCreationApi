@@ -32,17 +32,17 @@ jobs:
           EC2_KEY: ${{ secrets.EC2_KEY }}
         run: |
           # Create SSH key file
-          echo "$EC2_KEY" > private_key.pem
-          chmod 600 private_key.pem
+          echo "$EC2_KEY" > Thamnail-creation.pem
+          chmod 600 Thamnail-creation.pem
 
           # Create deployment directory on EC2
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${EC2_USER}@${EC2_HOST} 'mkdir -p ~/myapp'
+          ssh -o StrictHostKeyChecking=no -i Thamnail-creation.pem ${EC2_USER}@${EC2_HOST} 'mkdir -p ~/myapp'
 
           # Copy all project files to EC2
-          scp -o StrictHostKeyChecking=no -i private_key.pem -r * ${EC2_USER}@${EC2_HOST}:~/myapp/
+          scp -o StrictHostKeyChecking=no -i Thamnail-creation.pem -r * ${EC2_USER}@${EC2_HOST}:~/myapp/
 
           # SSH into EC2 and restart Node.js app using PM2
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${EC2_USER}@${EC2_HOST} '
+          ssh -o StrictHostKeyChecking=no -i Thamnail-creation.pem ${EC2_USER}@${EC2_HOST} '
             cd ~/myapp
             npm install --production
             pm2 stop myapp || true
@@ -51,4 +51,4 @@ jobs:
           '
 
           # Clean up the SSH key
-          rm -f private_key.pem
+          rm -f Thamnail-creation.pem
