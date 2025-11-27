@@ -1,0 +1,68 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main  # or master, depending on your default branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    - name: Install Backend Dependencies
+      run: |
+        cd server
+        npm ci
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd client
+        npm ci
+
+    - name: Build React App
+      run: |
+        cd client
+        npm run build
+
+    - name: Deploy to EC2
+      env:
+        EC2_HOST: ${{ secrets.EC2_HOST }}
+        EC2_USER: ${{ secrets.EC2_USER }}
+        EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+      run: |
+        # Create SSH key file
+        echo "$EC2_SSH_KEY" > private_key.pem
+        chmod 600 private_key.pem
+
+        # Create deployment directory on EC2 if it doesn't exist
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${EC2_USER}@${EC2_HOST} '
+          mkdir -p ~/myapp/server
+          mkdir -p ~/myapp/client
+        '
+
+        # Copy server files
+        scp -o StrictHostKeyChecking=no -i private_key.pem -r server/* ${EC2_USER}@${EC2_HOST}:~/myapp/server/
+
+        # Copy built React files
+        scp -o StrictHostKeyChecking=no -i private_key.pem -r client/build ${EC2_USER}@${EC2_HOST}:~/myapp/client/
+
+        # Restart the application
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${EC2_USER}@${EC2_HOST} '
+          cd ~/myapp/server
+          npm install --production
+          pm2 stop myapp || true
+          pm2 start index.js --name myapp
+          pm2 save
+        '
+
+        # Clean up
+        rm -f private_key.pem
