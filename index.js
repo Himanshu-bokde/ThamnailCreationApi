@@ -1,8 +1,10 @@
+const express = require('express');
+const app = express()
+
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { GetObjectCommand, S3Client,PutObjectCommand , ListObjectsV2Command, DeleteObjectCommand} = require("@aws-sdk/client-s3");
 require("dotenv").config();
 
-console.log("SSSSSSSS", process.env.AWS_REGION)
 
 const s3Client = new S3Client({
     region:  process.env.AWS_REGION,
@@ -65,6 +67,15 @@ async function deleteObject(){
 
     // listObject()
 
-    deleteObject()
+    // deleteObject()
 
 })();
+
+
+const PORT = process.env.PORT ;
+
+app.get('/',(req,res,next)=>{
+    res.send("Hello Backend is running")
+})
+
+app.listen(PORT)
