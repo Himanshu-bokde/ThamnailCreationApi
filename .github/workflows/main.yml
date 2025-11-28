@@ -3,25 +3,25 @@ name: Deploy Node.js App to EC2
 on:
   push:
     branches:
-      - master  # your default branch
+      - master   # your main or master branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1 — Checkout your code
+      # Step 1 — Checkout Code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2 — Setup Node.js (optional, if you want to build/test)
+      # Step 2 — Setup Node.js (optional, for tests/build)
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
-      # Step 3 — Install dependencies (optional, for build/test)
-      - name: Install Dependencies
+      # Step 3 — Install dependencies (LOCAL, not on EC2)
+      - name: Install dependencies
         run: npm ci
 
       # Step 4 — Deploy to EC2
@@ -32,23 +32,28 @@ jobs:
           EC2_KEY: ${{ secrets.EC2_KEY }}
         run: |
           # Create SSH key file
-          echo "$EC2_KEY" > Thamnail-creation.pem
-          chmod 600 Thamnail-creation.pem
+          echo "$EC2_KEY" > private_key.pem
+          chmod 600 private_key.pem
 
-          # Create deployment directory on EC2
-          ssh -o StrictHostKeyChecking=no -i Thamnail-creation.pem ${EC2_USER}@${EC2_HOST} 'mkdir -p ~/myapp'
+          echo "📁 Creating app directory on EC2..."
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${EC2_USER}@${EC2_HOST} "mkdir -p ~/myapp"
 
-          # Copy all project files to EC2
-          scp -o StrictHostKeyChecking=no -i Thamnail-creation.pem -r * ${EC2_USER}@${EC2_HOST}:~/myapp/
+          echo "📤 Uploading files to EC2..."
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i private_key.pem" \
+            --exclude 'node_modules' \
+            --exclude '.git' \
+            --exclude '.github' \
+            ./ ${EC2_USER}@${EC2_HOST}:~/myapp/
 
-          # SSH into EC2 and restart Node.js app using PM2
-          ssh -o StrictHostKeyChecking=no -i Thamnail-creation.pem ${EC2_USER}@${EC2_HOST} '
+          echo "🚀 Restarting app on EC2..."
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${EC2_USER}@${EC2_HOST} "
             cd ~/myapp
             npm install --production
+            sudo npm install -g pm2
             pm2 stop myapp || true
             pm2 start index.js --name myapp
             pm2 save
-          '
+          "
 
-          # Clean up the SSH key
-          rm -f Thamnail-creation.pem
+          # Clean private key
+          rm -f private_key.pem
