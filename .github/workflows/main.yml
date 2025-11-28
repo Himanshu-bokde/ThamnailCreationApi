@@ -8,30 +8,48 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ThamnailCreation
 
     steps:
+      # Step 1 — Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup SSH Key
-        env:
-          EC2_KEY: ${{ secrets.EC2_KEY }}
-        run: |
-          echo "$EC2_KEY" > private_key.pem
-          chmod 600 private_key.pem
+      # Step 2 — Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
 
-      - name: Upload project & restart app
+      # Step 3 — Install dependencies
+      - name: Install Dependencies
+        run: npm ci
+
+      # Step 4 — Deploy to EC2
+      - name: Deploy to EC2
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_KEY: ${{ secrets.EC2_KEY }}
         run: |
+          # Create SSH key
+          echo "$EC2_KEY" > private_key.pem
+          chmod 600 private_key.pem
+
+          # Ensure deployment folder exists
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${EC2_USER}@${EC2_HOST} 'mkdir -p ~/myapp'
+
+          # Upload project files (ignore node_modules & .git) — faster than scp
           rsync -avz --exclude=node_modules --exclude=.git -e "ssh -o StrictHostKeyChecking=no -i private_key.pem" ./ ${EC2_USER}@${EC2_HOST}:~/myapp/
 
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${EC2_USER}@${EC2_HOST} "
-            cd ~/myapp &&
-            npm install --production &&
-            pm2 restart myapp || pm2 start index.js --name myapp &&
+          # SSH into EC2, install deps, restart app
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${EC2_USER}@${EC2_HOST} '
+            cd ~/myapp
+            npm install --production
+            pm2 stop myapp || true
+            pm2 start index.js --name myapp
             pm2 save
-          "
+          '
 
+          # Remove private key
           rm -f private_key.pem
