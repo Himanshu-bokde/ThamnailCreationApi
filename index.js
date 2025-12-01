@@ -38,7 +38,11 @@ app.use((err, req, res, next) => {
 });
 
 
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: "*",
+  credentials: true
+}));
+
 app.use(express.json());
 
 route(app)
