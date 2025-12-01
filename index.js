@@ -12,7 +12,7 @@ const PORT = process.env.PORT ;
 
 const allowedOrigins = [
   // "https://your-frontend-domain.com",
-  "http://3.111.35.229:3000/",
+  "http://3.111.35.229:3000",
   "http://localhost:5173"   // for local dev (optional)
 ];
 
