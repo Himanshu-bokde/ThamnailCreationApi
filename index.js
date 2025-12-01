@@ -10,8 +10,13 @@ const PORT = process.env.PORT ;
 
 
 
+const allowedOrigins = [
+  "http://3.111.35.229:3000",
+  "http://localhost:5173"
+];
+
 const corsOptions = {
-  origin: function (origin, callback) {
+  origin: function(origin, callback) {
     console.log("Incoming Origin:", origin);
 
     // Allow requests with no origin (Postman, curl)
@@ -20,7 +25,8 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error("CORS policy: This origin is not allowed"));
+      // Instead of throwing, return a proper 403 response
+      callback(null, false);
     }
   },
   credentials: true,
@@ -28,22 +34,14 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"]
 };
 
-// Error-handling middleware for CORS and other errors
-app.use((err, req, res, next) => {
-  console.error("Error:", err.message);
-  if (err.message.includes("CORS")) {
-    return res.status(403).json({ message: err.message });
-  }
-  res.status(500).json({ message: "Internal Server Error" });
-});
 
+// app.use(express.json());
 
 app.use(cors({
-  origin: "*",
+  origin: "http://3.111.35.229:3000",
   credentials: true
 }));
 
-app.use(express.json());
 
 route(app)
 
